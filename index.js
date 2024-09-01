@@ -6,14 +6,15 @@ const { generateReportQuery } = require('./constants/Query');
 
 const app = express();
 const port = 8081;
+require('dotenv').config(); // Load environment variables from .env file
 
 const config = {
-    user: 'FSN',
-    password: '123456',
-    server: '192.168.1.55',
-    database: 'TestFSN',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE,
     options: {
-        encrypt: false // Disable encryption
+        encrypt: process.env.DB_ENCRYPT === 'true' // Convert string to boolean
     }
 };
 
