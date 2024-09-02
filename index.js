@@ -3,16 +3,28 @@ const sql = require('mssql');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const { generateReportQuery } = require('./constants/Query');
+const https = require('https');
+const fs = require('fs');
 
 const app = express();
 const port = 8081;
+// const options = {
+//     key: fs.readFileSync('server.key'),
+//     cert: fs.readFileSync('server.cert')
+//   };
 require('dotenv').config(); // Load environment variables from .env file
-
+app.use(cors({
+    origin: '*', // Allow all origins
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow specific HTTP methods
+    allowedHeaders: 'Content-Type,Authorization', // Allow specific headers
+    credentials: true, // Set to true if your server needs to accept cookies or other credentials from the client
+}));
 const config = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     server: process.env.DB_SERVER,
     database: process.env.DB_DATABASE,
+    port: 3434,
     options: {
         encrypt: process.env.DB_ENCRYPT === 'true' // Convert string to boolean
     }
@@ -20,7 +32,7 @@ const config = {
 
 // Middleware
 app.use(bodyParser.json());
-app.use(cors());
+// app.use(cors(corsOptions));
 
 // Connect to SQL Server
 sql.connect(config, err => {
@@ -147,7 +159,6 @@ app.get('/get-column-names', async (req, res) => {
     }
 });
 
-// Start server
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
+app.listen(8081, () => {
+    console.log('Server is running on https://192.168.1.4:8081');
+  });
