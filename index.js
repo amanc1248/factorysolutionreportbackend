@@ -13,18 +13,21 @@ const port = 8081;
 //     cert: fs.readFileSync('server.cert')
 //   };
 require('dotenv').config(); // Load environment variables from .env file
-app.use(cors({
-    origin: '*', // Allow all origins
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allow specific HTTP methods
-    allowedHeaders: 'Content-Type,Authorization', // Allow specific headers
-    credentials: true, // Set to true if your server needs to accept cookies or other credentials from the client
-}));
+const corsOptions = {
+    origin: 'http://103.254.185.56:3434', // Public IP of your frontend
+    methods: ['GET', 'POST'], // Allowed HTTP methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
+    credentials: true // Allow credentials (cookies, authorization headers, etc.)
+};
+
+// Use CORS middleware with options
+app.use(cors());
 const config = {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     server: process.env.DB_SERVER,
     database: process.env.DB_DATABASE,
-    port: 3434,
+    port: 1433,
     options: {
         encrypt: process.env.DB_ENCRYPT === 'true' // Convert string to boolean
     }
@@ -134,6 +137,40 @@ app.get('/fetch-systems', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// API endpoint to fetch data from subSystems table by userId
+app.get('/fetch-sub-systems', async (req, res) => {
+    const { userId, systemId } = req.query;
+
+    // Basic validation
+    if (!userId || !systemId) {
+        return res.status(400).json({ error: 'userId and systemId are required' });
+    }
+
+    try {
+        // Create a new SQL request
+        const request = new sql.Request();
+
+        // Add input parameters
+        request.input('UserId', sql.VarChar, userId);
+        request.input('SystemId', sql.VarChar, systemId);
+
+        // Query the subSystems table to find data by userId and systemId
+        const result = await request.query('SELECT * FROM subSystems WHERE userId = @UserId AND systemId = @SystemId');
+
+        if (result.recordset.length === 0) {
+            // If no data found for the provided userId and systemId
+            return res.status(404).json({ error: 'No sub-systems data found for this userId and systemId' });
+        }
+
+        // On successful data fetch
+        res.status(200).json({ message: 'Data fetched successfully', data: result.recordset });
+    } catch (error) {
+        console.error('Error fetching sub-systems data:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 app.get('/get-column-names', async (req, res) => {
     try {
