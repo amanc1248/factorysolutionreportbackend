@@ -27,7 +27,8 @@ const config = {
     password: process.env.DB_PASSWORD,
     server: process.env.DB_SERVER,
     database: process.env.DB_DATABASE,
-    port: 1433,
+    // port: 1433,
+    port: 9828,
     options: {
         encrypt: process.env.DB_ENCRYPT === 'true' // Convert string to boolean
     }
@@ -53,19 +54,38 @@ app.get('/', (req, res) => {
 
 // Route to get report
 app.post('/get-report', async (req, res) => {
-    const { startDate, endDate, interval, systemId, userId, } = req.body;
+    const { startDate, endDate, interval, systemId, userId, subSystemId,} = req.body;
 
     // Basic validation
     if (!startDate || !endDate) {
         return res.status(400).json({ error: 'Start Date and end date are required' });
     }
 
-    const query = generateReportQuery(startDate, endDate, interval, systemId, userId);
+    const query = generateReportQuery(startDate, endDate, interval, systemId, userId, subSystemId);
 
     try {
         const request = new sql.Request();
         const result = await request.query(query);
-        res.status(200).json(result.recordset);
+        const processData = (array) => {
+            return array.map(entry => {
+                const keysToProcess = ["FT", "TOTALIZER", "PT", "P_RunDay", "P_RunHr", "P_RunMn"];
+        
+                // Copy original entry
+                const newEntry = { ...entry };
+        
+                // Process specified fields
+                keysToProcess.forEach(key => {
+                    if (newEntry[key]) {
+                        const trimmedValue = parseFloat(newEntry[key].trim());
+                        newEntry[key] = parseFloat(trimmedValue.toFixed(2));
+                    }
+                });
+        
+                return newEntry;
+            });
+        };
+        const formattedData = processData(result.recordset);
+        res.status(200).json(formattedData);
     } catch (err) {
         console.error('Error executing query:', err);
         res.status(500).json({ error: 'Database error' });
@@ -99,7 +119,7 @@ app.post('/login', async (req, res) => {
 
         const user = result.recordset[0];
         // On successful login
-        res.status(200).json({ message: 'Login successful', id: user.id, userId: user.id, userId: user.userId, email: user.email, password: user?.password, reportHeader: user.reportHeader });
+        res.status(200).json({ message: 'Login successful', name: user.name,id: user.id, userId: user.id, userId: user.userId, email: user.email, password: user?.password, reportHeader: user.reportHeader });
     } catch (error) {
         console.error('Error during login:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -181,7 +201,7 @@ app.get('/get-column-names', async (req, res) => {
         const result = await request.query(`
             SELECT COLUMN_NAME 
             FROM INFORMATION_SCHEMA.COLUMNS 
-            WHERE TABLE_NAME = 'maindata'
+            WHERE TABLE_NAME = 'MainTable'
             AND COLUMN_NAME NOT IN ('id', 'userId', 'systemId','DateAndTime');
         `);
 
